@@ -1,5 +1,6 @@
 #### Analyzing the emoji used when people talk about China and #maga. 
 #### And sentimental analysis
+library(dplyr)
 
 library(rtweet) #https://cran.r-project.org/web/packages/rtweet/rtweet.pdf
 library(tidyverse)
@@ -18,8 +19,33 @@ library(streamR) #for the streaming API
 library(ROAuth)
 #https://cran.r-project.org/web/packages/streamR/streamR.pdf
 
+library(data.table)
+
 
 emoji("thumbsup")
+
+#define plot theme
+plotTheme <- function(base_size = 24) {
+  theme(
+    text = element_text( color = "black"),
+    plot.title = element_text(size = 18,colour = "black"),
+    plot.subtitle = element_text(face="italic"),
+    plot.caption = element_text(hjust=0),
+    panel.background = element_rect(fill = "white", color = "grey80"),
+    panel.grid.major.y = element_line("white"),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "grey80", color = "white"),
+    strip.text.x = element_text(size=8),
+    axis.title = element_text(size=8),
+    axis.text = element_text(size=8),
+    axis.title.y = element_text(size=12),
+    plot.background = element_blank(),
+    legend.background = element_blank(),
+    legend.title = element_text(colour = "black", face = "italic"),
+    legend.text = element_text(colour = "black", face = "italic"),
+    axis.ticks.y = element_line(color="white")
+)
+}
 
 # Matching a single string against a single keyword
 #   If regexpr finds a match, it will return the character position at which the match is found (in the example above, it will return 1).
@@ -30,6 +56,7 @@ tweetText <- "<ed><a0><bd><ed><b1><8d>nothing is impossible https://t.co/AckwyTx
 
 results <- regexpr(keyword,tweetText)
 
+##possible solutions for taking out the 
 #take out the emoji code
 str_replace()
 #regex alphanumeric, any alpha numeric characters between < and >
@@ -38,20 +65,25 @@ tweetText <- streamedtweets
 reggsub(reg," ",tweetText)#(what to look for, what to replace, input string)
 
 
-# Matching multiple strings against a multiple keywords
-
+# Matching text with Emoji stream API encoding
 emojiEncodings <- read.csv("D:/620/MUSA-620-Week-9-master/MUSA-620-Week-9-master/MUSA-620-Week-9-master/MUSA-620-Week-9-master/emoji-encodings.csv")
 tweetTexts <- c("<ed><a0><bd><ed><b1><8d>nothing is impossible https://t.co/AckwyTxVjR","Yesterday was a huge day for our founders <e2><9c><8d><ef><b8><8f><ed><a0><be><ed><b7><a0><ed><a0><bd><ed><b2><a5> Thanks to the @MYOB and @BlueChilliGroup marketing and social media specialis<e2><80><a6>")
 
-results <- sapply(emojiEncodings$streamApiEncodings, regexpr, tweetTexts) %>%
+resultsofemoji <- sapply(emojiEncodings$streamApiEncodings, regexpr, streamedtweetstext) %>%
   data.frame()
-colnames(results) <- emojiEncodings$emojiDescription
+colnames(resultsofemoji) <- emojiEncodings$emojiDescription
 
-results["THUMBS UP SIGN"]
-results["COLLISION SYMBOL"]
-
-
-
+##Take out all the tweet text with Emoji US
+resultsUS <- resultsofemoji["REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S"] %>%
+  cbind(streamedtweetstext) %>%
+  setnames(old=c("REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S","streamedtweetstext"), new=c("detectresult", "tweet")) %>%
+  mutate(detectresult = as.numeric(detectresult),
+         tweet = as.character(tweet)) %>%
+  dplyr::select(detectresult,tweet) %>%
+  as.data.frame() %>%
+  dplyr::filter(detectresult!= -1) %>%
+  dplyr::select(tweet)
+  
 
 # STREAMING API 
 #My key
@@ -133,6 +165,9 @@ emojiresults <- sapply(emojiEncodings$streamApiEncodings, regexpr, streamedtweet
   data.frame()
 colnames(emojiresults) <- emojiEncodings$emojiDescription
 
+# StreamAPIencoding for REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S
+# <ed><a0><bc><ed><b7><ba><ed><a0><bc><ed><b7><b8>
+
 #emojiresults["THUMBS UP SIGN"]
 #table(emojiresults["THUMBS UP SIGN"])
 #emojiresults["ANGRY FACE"]
@@ -143,133 +178,167 @@ colnames(emojiresults) <- emojiEncodings$emojiDescription
 emojiresults[emojiresults == -1] <- 0
 emojiresults[emojiresults != 0] <- 1
 
-totalemoji <- colSums(emojiresults)
+China <- colSums(emojiresults)
+maga <- colSums(emojiresults)
 
-# Take out the top 20 emojis
-topCNemoji <- sort(totalemoji, decreasing = TRUE)%>%
+# combine the total emoji of China and #maga in one data frame
+totalemoji <- cbind(China,maga) %>%
+  data.frame()
+# Important!!! transform the rownames into the first columm or arrange is going to lose the emojis
+totalemojiname <- tibble::rownames_to_column(totalemoji, "emoji")
+# Sort descending and take the top 20 of US and CN share in common
+ChinaUS <- dplyr::arrange(totalemojiname,desc(China),desc(maga))%>%
   head(20)
 
-barplot(topCNemoji) +
-  labs(x = "", y = "Frequency of Emojis", fill = "")
+###Pipe everything together: top 20 emojis
+top20emoji <- cbind(China,maga) %>%
+  data.frame() %>%
+  tibble::rownames_to_column("emoji") %>%
+  dplyr::arrange(desc(China),desc(maga))%>%
+  head(20)
 
-#ggplot(topCNemoji) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(x = "", y = "Frequency of Emojis", fill = "")
+###Facet wrap top 20 emojis
+tallFormat = gather(top20emoji, key= country, value= frequency,China:maga)
+
+palette <- c('#70284a','#0d585f')
+
+newlable <- c(
+  `China` = "China",
+  `maga` = "#maga"
+)
+
+p <- ggplot(tallFormat,aes(x= country, y= frequency, fill = country)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  ylab("value") +
+  xlab("emojis") +
+  labs(title = "Emoji frequency comparison", subtitle = 'Between search keywords of "China" and "#maga"')+
+  scale_fill_manual(name = "emojis",labels = c("China","#maga"),values = palette)+plotTheme() 
+
+ModelFacet <- p + facet_wrap(~emoji, ncol = 4)
+ModelFacet
 
 # Comparison 4: sentiment analysis
 
+##Take out all the tweet text with Emoji US(#maga)
+resultsUS <- resultsofemoji["REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S"] %>%
+  cbind(streamedtweetstext) %>%
+  setnames(old=c("REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S","streamedtweetstext"), new=c("detectresult", "tweet")) %>%
+  mutate(detectresult = as.numeric(detectresult),
+         text = as.character(tweet)) %>%
+  dplyr::select(detectresult,text) %>%
+  as.data.frame() %>%
+  dplyr::filter(detectresult!= -1) %>%
+  dplyr::select(text)
+
+##Take out for all the tweet text with Emoji US(China)
+resultsUS <- emojiresults["REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S"] %>%
+  cbind(streamedtweetstext) %>%
+  setnames(old=c("REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S","streamedtweetstext"), new=c("detectresult", "tweet")) %>%
+  mutate(detectresult = as.numeric(detectresult),
+         text = as.character(tweet)) %>%
+  dplyr::select(detectresult,text) %>%
+  as.data.frame() %>%
+  dplyr::filter(detectresult!= -1) %>%
+  dplyr::select(text)
+
+##possible solutions for taking out the emojis 
+#take out the emoji code
+#str_replace()
+#regex alphanumeric, any alpha numeric characters between < and >
+reg <- "<[a-zA-Z0-9][a-zA-Z0-9]>"
+resultsUS$text <- gsub(reg," ",resultsUS$text)
+
+###word frequency
+
+# to tokenize the tweets into words, we will use a regular expression
+reg <- "([^A-Za-z\\d#@']|'(?![A-Za-z\\d#@]))"
+# [^ CHARACTERGROUP ] = Matches any single character that is not in CHARACTERGROUP
+# A-Za-z = any letter
+# \d     = any numeric digit
+# #@     = the # or @ symbols
+#^ means string starts with 
+# [^A-Za-z\\d#@'] = Match any character that is not alphanumeric and is not # or @
+# This is how it determines where the breaks are between words
+# Stop words - common words that convey little meaning, should be removed
+stop_words$word
+
+resultsUSWords <- resultsUS %>%
+  filter(!str_detect(text, '^RT|^"')) %>%                                      # filter tweets starting w/ "rt"
+  mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>%   # remove links
+  unnest_tokens(word, text, token = "regex", pattern = reg) %>%                     # parse the text into "tokens"
+  filter(!word %in% stop_words$word, str_detect(word, "[a-z]"))                     # remove stop words
+
+# word frequency #maga
+resultsUSWords %>%
+  count(word, sort = TRUE) %>%
+  head(20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_bar(stat = "identity") +
+  ylab("Occurrences") +
+  coord_flip() +
+  labs(title = "Word frequency of tweets talking about maga with US emoji")+plotTheme()
+
+# word frequency China
+resultsUSWords %>%
+  count(word, sort = TRUE) %>%
+  head(20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_bar(stat = "identity") +
+  ylab("Occurrences") +
+  coord_flip() +
+  labs(title = "Word frequency of tweets talking about China with US emoji")+plotTheme()
+
 # but before analyzing the tweets, a primer on sentiment analysis using the syuzhet package
 # https://cran.r-project.org/web/packages/syuzhet/syuzhet.pdf
-
 # Basic sentiment analysis is quite simple - the words are compared against a corpus
 # of "good" and "bad" words. Good words get a positive score. Bad words get a negative score.
 # the average score across all words determines the overal sentiment.
-wordByWordSentiment1 <- get_sentiment(c("nlp","is","awesome"), method="syuzhet")
-overallSentiment1 <- mean(wordByWordSentiment1)
-
-wordByWordSentiment2 <- get_sentiment(c("I","hate","gross","broccoli","it","sucks"), method="syuzhet")
-overallSentiment2 <- mean(wordByWordSentiment2)
-
-
-# The examples above use the "syuzhet" model, which only give a single positive/negative score
-# Other sentiment models, such as "nrc", score sentiment across multiple dimensions
-
-NRCSentiment <- get_nrc_sentiment(c("I","hate","gross","broccoli","it","sucks"))
-overallNRCSentiment <- summarise_all(NRCSentiment,funs(mean))
-
-
-# TOKENIZING
-# Earlier, we tokenized the tweets into words using a regular expression
-# The syuzhet package has built-in functions for tokenizing text
-
-# We can tokenize a string into words
-tokenizedWords <- get_tokens("What a happy joyous day!", pattern = "\\W")
-
-
-# We can also tokenize a large text into sentences
-###setwd("D:/620/MUSA-620-Week-9-master/MUSA-620-Week-9-master/MUSA-620-Week-9-master/MUSA-620-Week-9-master")
-sou <- readChar('state-of-the-union-2018.txt', file.info('state-of-the-union-2018.txt')$size,useByte = TRUE) %>%
-  str_replace_all("[\r\n]" , " ") # for cleanup
-
-tokenizedSentences <- get_sentences(sou)
-
-
-# Likewise, we can run our sentiment analysis on words or on sentences
-get_nrc_sentiment(tokenizedWords) %>%
-  summarise_all(funs(mean))
-
-get_nrc_sentiment(tokenizedSentences) %>%
-  summarise_all(funs(mean))
-
-
-
-# Sentiment analysis of @realdonaldtrump tweets
-
-morningWords <- filter(djtWords, timeofday == 'Morning')
-afternoonWords <- filter(djtWords, timeofday == 'Afternoon')
-eveningWords <- filter(djtWords, timeofday == 'Evening')
-
-
-
 # calculate the positive/negative sentiment of tweets from each group
-
 scores <- data.frame()
 
-score <- get_sentiment(eveningWords$word, method="syuzhet") %>%
+score <- get_sentiment(resultsUSWords$word, method="syuzhet") %>%
   mean()
-scores <- rbind(scores,data.frame(timeofday="Evening",score=score))
+scores <- rbind(scores,data.frame(keyword="#maga",score=score))
 
-score <- get_sentiment(afternoonWords$word, method="syuzhet") %>%
+score <- get_sentiment(resultsUSWords$word, method="syuzhet") %>%
   mean()
-scores <- rbind(scores,data.frame(timeofday="Afternoon",score=score))
+scores <- rbind(scores,data.frame(keyword="China",score=score))
 
-score <- get_sentiment(morningWords$word, method="syuzhet") %>%
-  mean()
-scores <- rbind(scores,data.frame(timeofday="Morning",score=score))
-
-
-ggplot(scores,aes(x=timeofday, y=score, fill = score > 0)) +
+ggplot(scores,aes(x=keyword, y=score, fill = score > 0)) +
   geom_bar(stat = "identity") +
-  coord_flip() +
   ylab("Sentiment") +
-  labs(title = "Sentiment of @realdonaldtrump tweets by time of day") +
+  labs(title = "Sentiment analysis of tweets using US emoji", subtitle = "when people talk about China or #maga",caption = "using syuzhet package") +
   scale_fill_manual(name = "", labels = c("Negative", "Positive"),
                     values = c("red", "lightblue"))
 
 
 
-
 # calculate the NRC sentiment scores
-
 nrcScores <- data.frame()
 
-eveningScores <- get_nrc_sentiment(eveningWords$word) %>%
+magaScores <- get_nrc_sentiment(resultsUSWords$word) %>%
   summarise_all(funs(mean))
-nrcScores <- rbind(nrcScores,data.frame(timeofday="Evening",eveningScores))
+nrcScores <- rbind(nrcScores,data.frame(keyword="#maga",magaScores))
 
-afternoonScores <- get_nrc_sentiment(afternoonWords$word) %>%
+Chinascores <- get_nrc_sentiment(resultsUSWords$word) %>%
   summarise_all(funs(mean))
-nrcScores <- rbind(nrcScores,data.frame(timeofday="Afternoon",afternoonScores))
-
-morningScores <- get_nrc_sentiment(morningWords$word) %>%
-  summarise_all(funs(mean))
-nrcScores <- rbind(nrcScores,data.frame(timeofday="Morning",morningScores))
-
+nrcScores <- rbind(nrcScores,data.frame(keyword="China",Chinascores))
 
 
 tallFormat = gather(nrcScores, key=emotion, value=score, anger:positive)
 
-p <- ggplot(tallFormat,aes(x=timeofday, y=score), fill = "black") +
+p <- ggplot(tallFormat,aes(x=keyword, y=score), fill = "black") +
   geom_bar(stat = "identity") +
   coord_flip() +
   ylab("Sentiment") +
-  labs(title = "NRC sentiment of @realdonaldtrump tweets by time of day")
+  xlab("Keywords") +
+  labs(title = "NRC sentiment analysis of tweets using US emojis", subtitle = "when people talk about China or #maga", caption = "using syuzhet package")+
+  scale_fill_manual(name = score,labels = c("China","#maga"), values = c('#70284a','#0d585f'))+plotTheme()
 
-scale_fill_manual(name = "", labels = c("", "",""),
-                  values = c("red", "lightblue","orange"))
-
-p + facet_wrap(~emotion, ncol = 5)
-
-
+resultFacet <- p + facet_wrap(~emotion, ncol = 5)
+resultFacet
 
 
