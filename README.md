@@ -1,9 +1,6 @@
 # Text mining Natural Language Processing
 
-### Sentimental Analysis of Emoji “US” in Twitter 
-### Based on tweets searched from keywords “China ” and ”#maga”
-
-### MUSA 620 assignment 4
+### Sentimental Analysis of Emoji “US” in Twitter based on tweets searched from keywords “China ” and ”#maga”
 
 ![NRC sentiment analysis results](results/NRC%20sentiment%20analysis%20results-01-05-0328.jpeg)
 
