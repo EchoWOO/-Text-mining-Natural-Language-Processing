@@ -3,7 +3,7 @@ MUSA 620 assignment 4
 
 Sentimental Analysis of Emoji “US” in Twitter Based on tweets searched from keywords “China ” and ”#maga”
 
-![NRC sentiment analysis results](results/NRC sentiment analysis results-01-05-0328.jpeg)
+![NRC sentiment analysis results](results/NRC%20sentiment%20analysis%20results-01-05-0328.jpeg)
 
 This is a sentimental analysis for Tweets with emojis. In this analysis, I chose two keywords, “China” and “#maga” to collect tweets. These two words have similar uses but might have different sentimental conditions. I hope to see what emojis people usually use when they are talking about these two topics, which emoji is used the most often in both topics and if they represent similar sentimental conditions.
 This analysis took three steps. The first step is to collect tweets using the SteamR and the ROAuth package. I used a total number of 50000 for the streaming API and the final results returned for both of the keywords was around 13000. After filtering out the retweets, there were about 6000 left totally. The second step is to filter out the tweets that used emojis and the total number of appearances for each of them. Then from the most frequently used emojis, I selected the emoji, “REGIONAL INDICATOR SYMBOL LETTER U + REGIONAL INDICATOR SYMBOL LETTER S”(US), which appears a lot in both keywords to do the sentimental analysis.
