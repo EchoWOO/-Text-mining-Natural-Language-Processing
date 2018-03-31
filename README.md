@@ -3,7 +3,7 @@
 ### Sentimental Analysis of Emoji “US” in Twitter based on tweets searched from keywords "China" and "#maga"
 
 <p align="center">
-<img src = "results/Emoji%20Frequency%20Comparison.jpeg" width = "600">
+<img src = "results/Emoji%20Frequency%20Comparison.jpeg" width = "700">
 </p>
 
 This is a sentimental analysis for Tweets with emojis. In this analysis, I chose two keywords, “China” and “#maga” to collect tweets. These two words have similar uses but might have different sentimental conditions. I hope to see what emojis people usually use when they are talking about these two topics, which emoji is used the most often in both topics and if they represent similar sentimental conditions.
@@ -28,7 +28,7 @@ The [results](results) of this analysis is divided into three halves. From the f
 
 
 <p align="center">
-<img src = "results/Sentiment%20analysis%20of%20tweets%20using%20US%20emoji-02-06-0327.jpeg" width = "400">
+<img src = "results/Sentiment%20analysis%20of%20tweets%20using%20US%20emoji-02-06-0327.jpeg" width = "450">
 </p>
 
 
